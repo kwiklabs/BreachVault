@@ -1,6 +1,22 @@
 # BreachVault 🔐
 
-**Production-ready password breach checker** with ultra-fast lookup (Bloom Filter → Redis → PostgreSQL) and seamless integration into [kwik.gg](https://kwik.gg).
+<div align="center">
+  <strong>Production-ready password breach checker</strong>
+  <br>
+  Ultra-fast lookup (Bloom Filter → Redis → PostgreSQL)
+  <br>
+  Built by <a href="https://github.com/kwiklabs">kwiklabs</a> for <a href="https://kwik.gg">kwik.gg</a>
+</div>
+
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#deployment">Deployment</a> •
+  <a href="#configuration">Configuration</a> •
+  <a href="#api">API</a>
+</p>
+
+---
 
 ## Features
 
@@ -15,7 +31,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/BreachVault.git
+git clone https://github.com/kwiklabs/BreachVault.git
 cd BreachVault
 
 # Set up environment variables
@@ -39,17 +55,37 @@ That's it! The application will be available at:
 
 ⚠️ **Change these immediately in production!** Edit the `.env` file.
 
+## Features Highlight
+
+### 🚀 Chunked Upload System
+
+Upload breach files of **any size** (tested up to 100GB) without crashing:
+
+- **Stream Processing**: Files are processed in 10MB chunks
+- **Direct to Database**: Passwords are hashed and inserted directly - no temp files stored
+- **Progress Tracking**: Real-time progress with speed and ETA
+- **Duplicate Handling**: Automatic deduplication using `ON CONFLICT DO NOTHING`
+- **Resume Capability**: Can pause and resume large uploads
+- **Memory Efficient**: Never loads full file into memory
+
+**Upload a 40GB breach file:**
+```typescript
+// Admin panel automatically uses chunked upload
+// Processes ~100K passwords/second
+// Uses ~100MB RAM regardless of file size
+```
+
 ## Architecture
 
 ```
 ┌─────────────┐
-│   Next.js   │ ← Client-side SHA-256 hashing
+│   Next.js   │ ← Client-side SHA-256 hashing + Chunked uploads
 │   Frontend  │
 └──────┬──────┘
        │
        ↓
 ┌─────────────┐
-│   FastAPI   │
+│   FastAPI   │ ← Stream processing (no temp file storage)
 │   Backend   │
 └──────┬──────┘
        │

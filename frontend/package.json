@@ -2,6 +2,11 @@
   "name": "breachvault-frontend",
   "version": "1.0.0",
   "private": true,
+  "author": "kwiklabs (https://github.com/kwiklabs)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kwiklabs/BreachVault.git"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,13 +14,14 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "clsx": "^2.1.0",
+    "framer-motion": "^12.23.25",
+    "lucide-react": "^0.556.0",
     "next": "^16.0.7",
+    "next-auth": "^4.24.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "next-auth": "^4.24.5",
-    "clsx": "^2.1.0",
-    "tailwind-merge": "^2.2.0",
-    "lucide-react": "^0.556.0"
+    "tailwind-merge": "^2.2.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",

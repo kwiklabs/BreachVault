@@ -6,7 +6,7 @@ from app.services.db import db_service
 from app.services.cache import cache_service
 from app.services.bloom import bloom_service
 from app.middleware import RateLimitMiddleware, LoggingMiddleware
-from app.routers import auth, check, import_router, health
+from app.routers import auth, check, import_router, chunk_router, health
 
 
 @asynccontextmanager
@@ -64,6 +64,7 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(check.router)
 app.include_router(import_router)
+app.include_router(chunk_router)
 
 
 @app.get("/")

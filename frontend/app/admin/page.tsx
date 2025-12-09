@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { UploadBreachForm } from '@/components/UploadBreachForm'
+import { ChunkedBreachUploader } from '@/components/ChunkedBreachUploader'
 import { getStats, type StatsResponse } from '@/lib/api'
 import Link from 'next/link'
 import { LogOut, Home, BarChart3 } from 'lucide-react'
@@ -110,7 +110,18 @@ export default function AdminPage() {
           </div>
         )}
 
-        <UploadBreachForm token={token} />
+        <ChunkedBreachUploader
+          token={token}
+          onComplete={async () => {
+            // Refresh stats after upload completes
+            try {
+              const data = await getStats()
+              setStats(data)
+            } catch (error) {
+              console.error('Failed to refresh stats:', error)
+            }
+          }}
+        />
       </div>
     </main>
   )

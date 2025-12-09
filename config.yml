@@ -1,0 +1,119 @@
+# BreachVault Configuration
+# Customize storage, performance, and resource limits
+
+# Storage Configuration
+storage:
+  # Maximum disk space for breach database (in GB)
+  max_disk_space: 500
+  
+  # Data directory path (for Docker volume mount)
+  data_path: ./data
+  
+  # Temporary upload directory
+  temp_upload_path: ./temp
+  
+  # Auto-cleanup old imports
+  auto_cleanup_enabled: true
+  cleanup_after_days: 30
+
+# Import Performance
+import:
+  # Batch size for database inserts (higher = faster but more memory)
+  batch_size: 10000
+  
+  # Maximum concurrent import workers
+  max_workers: 4
+  
+  # Throttle import speed (passwords per second, 0 = unlimited)
+  max_passwords_per_second: 0
+  
+  # Maximum file size for uploads (in GB)
+  max_file_size_gb: 100
+  
+  # Allowed file extensions
+  allowed_extensions:
+    - .txt
+    - .lst
+    - .dic
+    - .wordlist
+
+# Database Configuration
+database:
+  # PostgreSQL connection pool size
+  pool_min_size: 10
+  pool_max_size: 50
+  
+  # Query timeout (seconds)
+  query_timeout: 30
+  
+  # Enable query logging (for debugging)
+  log_queries: false
+
+# Redis Cache Configuration
+redis:
+  # Max memory (MB) - adjust based on available RAM
+  max_memory_mb: 2048
+  
+  # Cache TTL for breach lookups (seconds)
+  cache_ttl: 3600
+  
+  # Enable Redis persistence
+  persistence_enabled: true
+
+# Bloom Filter Configuration
+bloom_filter:
+  # Rebuild on startup (slower start, but always accurate)
+  rebuild_on_startup: false
+  
+  # False positive rate (lower = more memory, higher = less accurate)
+  false_positive_rate: 0.001
+  
+  # Estimated items (for optimal sizing)
+  estimated_items: 2000000000  # 2 billion
+
+# API Rate Limiting
+rate_limiting:
+  # Enable rate limiting
+  enabled: true
+  
+  # Requests per minute per IP
+  requests_per_minute: 60
+  
+  # Burst allowance
+  burst_size: 10
+
+# Security
+security:
+  # Require authentication for admin panel
+  require_admin_auth: true
+  
+  # Enable CORS
+  cors_enabled: true
+  cors_origins:
+    - http://localhost:3000
+    - https://kwik.gg
+  
+  # JWT token expiration (hours)
+  jwt_expiration_hours: 24
+
+# Network Deployment
+network:
+  # Enable multi-node support (experimental)
+  multi_node_enabled: false
+  
+  # Primary node URL (for replication)
+  primary_node_url: ""
+  
+  # Replication interval (seconds)
+  replication_interval: 300
+
+# Monitoring
+monitoring:
+  # Enable metrics export (Prometheus compatible)
+  metrics_enabled: true
+  
+  # Health check interval (seconds)
+  health_check_interval: 30
+  
+  # Log level (DEBUG, INFO, WARNING, ERROR)
+  log_level: INFO
