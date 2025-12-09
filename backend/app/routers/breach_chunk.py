@@ -1,6 +1,7 @@
 """
 Streaming chunk upload API for breach files
 Processes passwords in real-time without storing full file
+Includes security validation to prevent malicious uploads
 """
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
@@ -8,11 +9,36 @@ from fastapi.responses import JSONResponse
 from app.dependencies import verify_token
 import asyncio
 import hashlib
-from typing import Dict, Set
+import re
+from typing import Dict, Set, List
 import time
 from app.services.db import get_db_pool
 
 router = APIRouter(prefix="/api/breach/chunk", tags=["breach-chunk-upload"])
+
+# Security patterns to detect malicious content
+MALICIOUS_PATTERNS = [
+    rb'<script',
+    rb'<?php',
+    rb'<%',
+    rb'DROP\s+TABLE',
+    rb'DELETE\s+FROM',
+    rb'INSERT\s+INTO',
+    rb'UPDATE\s+\w+\s+SET',
+    rb'UNION\s+SELECT',
+    rb'exec\(',
+    rb'eval\(',
+    rb'system\(',
+    rb'passthru\(',
+    rb'shell_exec\(',
+    rb'`.*`',  # backticks
+    rb'\$\{.*\}',  # template injection
+    rb'__import__',
+    rb'\.\./',  # path traversal
+]
+
+# Compile patterns for faster matching
+MALICIOUS_REGEX = [re.compile(pattern, re.IGNORECASE) for pattern in MALICIOUS_PATTERNS]
 
 # In-memory session tracking
 upload_sessions: Dict[str, dict] = {}
@@ -47,36 +73,115 @@ async def cleanup_expired_sessions():
         del upload_sessions[upload_id]
 
 
+def validate_chunk_security(chunk_data: bytes) -> tuple[bool, str]:
+    """
+    Validate chunk for malicious content
+    Returns (is_valid, error_message)
+    """
+    # Check for malicious patterns
+    for pattern in MALICIOUS_REGEX:
+        if pattern.search(chunk_data):
+            return False, f"Malicious pattern detected: {pattern.pattern.decode()}"
+    
+    # Check for null bytes (potential binary exploit)
+    if b'\x00' in chunk_data:
+        return False, "Null bytes detected - binary data not allowed"
+    
+    # Check for excessive line length (potential DoS)
+    try:
+        text = chunk_data.decode("utf-8", errors="strict")
+        lines = text.split("\n")
+        for line in lines[:100]:  # Check first 100 lines
+            if len(line) > 1000:  # Max 1000 chars per password
+                return False, "Line too long - max 1000 characters per password"
+    except UnicodeDecodeError:
+        return False, "Invalid UTF-8 encoding"
+    
+    # Check for excessive special characters (potential injection)
+    special_char_ratio = sum(1 for c in chunk_data if c < 32 or c > 126) / max(len(chunk_data), 1)
+    if special_char_ratio > 0.3:  # More than 30% non-printable
+        return False, "Too many non-printable characters"
+    
+    return True, ""
+
+
+def sanitize_password(password: str) -> str:
+    """
+    Sanitize password input to prevent injection attacks
+    """
+    # Remove control characters
+    password = ''.join(char for char in password if ord(char) >= 32 or char in '\n\r\t')
+    
+    # Strip whitespace
+    password = password.strip()
+    
+    # Limit length
+    if len(password) > 1000:
+        password = password[:1000]
+    
+    return password
+
+
 async def process_password_chunk(
     chunk_data: bytes, upload_id: str, source: str = "admin_upload"
 ) -> dict:
     """
-    Process a chunk of passwords:
-    1. Decode text
-    2. Hash each password
-    3. Add to batch buffer
-    4. Insert batch when buffer is full
+    Process a chunk of passwords with security validation:
+    1. Validate for malicious content
+    2. Decode text
+    3. Sanitize and hash each password
+    4. Add to batch buffer
+    5. Insert batch when buffer is full
     """
     session = upload_sessions.get(upload_id)
     if not session:
         raise HTTPException(status_code=404, detail="Upload session not found")
 
     try:
+        # SECURITY: Validate chunk for malicious content
+        is_valid, error_msg = validate_chunk_security(chunk_data)
+        if not is_valid:
+            session["status"] = "error"
+            session["error_message"] = f"Security validation failed: {error_msg}"
+            raise HTTPException(status_code=400, detail=error_msg)
+        
         # Decode chunk as text
         text = chunk_data.decode("utf-8", errors="ignore")
         lines = text.split("\n")
 
-        # Remove empty lines and whitespace
-        passwords = [line.strip() for line in lines if line.strip()]
+        # Remove empty lines and sanitize
+        passwords = [sanitize_password(line) for line in lines if line.strip()]
 
-        # Hash passwords
+        # Hash passwords with additional validation
         hashes = []
+        suspicious_count = 0
+        
         for password in passwords:
-            if password:  # Skip empty lines
-                # SHA-256 hash
-                hash_obj = hashlib.sha256(password.encode("utf-8"))
-                password_hash = hash_obj.hexdigest()
-                hashes.append(password_hash)
+            if not password or len(password) < 1:
+                continue
+            
+            # SECURITY: Skip suspicious entries
+            if password.startswith(('#', '//', '--', '/*')):  # Comments
+                suspicious_count += 1
+                continue
+            
+            if re.match(r'^[0-9a-fA-F]{32,}$', password):  # Already hashed
+                suspicious_count += 1
+                continue
+            
+            # SHA-256 hash
+            hash_obj = hashlib.sha256(password.encode("utf-8"))
+            password_hash = hash_obj.hexdigest()
+            hashes.append(password_hash)
+        
+        # Warn if too many suspicious entries
+        if suspicious_count > len(passwords) * 0.5:  # More than 50%
+            session["status"] = "error"
+            session["error_message"] = "Too many suspicious entries - possible malformed file"
+            raise HTTPException(
+                status_code=400, 
+                detail="File appears to contain non-password data"
+            )
 
         # Add to batch buffer
         session["batch_buffer"].extend(hashes)
