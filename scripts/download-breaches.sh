@@ -26,11 +26,12 @@ import_to_db() {
     docker cp "$file" $CONTAINER_NAME:/app/breach_data.txt
     
     # Import (run in background with nohup)
-    docker compose -f /home/mmi/kwiklabs/BreachVault/docker-compose.yml exec -T $CONTAINER_NAME \
+    GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+    docker compose -f "$GIT_ROOT/docker-compose.yml" exec -T $CONTAINER_NAME \
         python scripts/seed_rockyou.py /app/breach_data.txt "$source"
     
     # Cleanup
-    docker compose -f /home/mmi/kwiklabs/BreachVault/docker-compose.yml exec -T $CONTAINER_NAME \
+    docker compose -f "$GIT_ROOT/docker-compose.yml" exec -T $CONTAINER_NAME \
         rm /app/breach_data.txt
 }
 
@@ -112,7 +113,8 @@ echo ""
 echo "Files in: $DOWNLOAD_DIR"
 echo ""
 echo "To manually import a file:"
-echo "  cd /home/mmi/kwiklabs/BreachVault"
+GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+echo "  cd $GIT_ROOT"
 echo "  sudo docker cp /path/to/file.txt $CONTAINER_NAME:/app/breach.txt"
 echo "  sudo docker compose exec backend python scripts/seed_rockyou.py /app/breach.txt source_name"
 echo ""

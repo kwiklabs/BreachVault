@@ -150,5 +150,6 @@ echo -e "${BOLD}${GREEN}╔═════════════════�
 echo -e "${BOLD}${GREEN}║            All Done! 🎉                   ║${NC}"
 echo -e "${BOLD}${GREEN}╚════════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "${CYAN}Now run:${NC} ${BOLD}cd /home/mmi/kwiklabs/BreachVault && ./import-all.sh${NC}"
+GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+echo -e "${CYAN}Now run:${NC} ${BOLD}cd $GIT_ROOT && ./import-all.sh${NC}"
 echo ""

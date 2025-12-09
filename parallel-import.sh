@@ -78,14 +78,18 @@ scan_directory() {
     \) 2>/dev/null)
 }
 
+# Get git repository root
+GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+
 # Scan common locations
-scan_directory ~/Downloads
-scan_directory ~/wordlists
+scan_directory "$HOME/Downloads"
+scan_directory "$HOME/wordlists"
+scan_directory "$GIT_ROOT"
 scan_directory .
 
 if [ ${#WORDLISTS[@]} -eq 0 ]; then
     echo -e "${RED}❌ No wordlists found${NC}"
-    echo "Searched: ~/Downloads, ~/wordlists, current directory"
+    echo "Searched: \$HOME/Downloads, \$HOME/wordlists, git root, current directory"
     exit 1
 fi
 
