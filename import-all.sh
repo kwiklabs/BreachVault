@@ -32,8 +32,8 @@ EMOJI_PARTY="🎉"
 download_rockyou2024() {
     echo -e "${CYAN}${EMOJI_DOWNLOAD} Downloading RockYou2024.txt${NC}"
     echo -e "${BOLD}   • 1.5 billion passwords${NC}"
-    echo -e "${BOLD}   • ~7GB compressed → ~26GB uncompressed${NC}"
-    echo -e "   ${BLUE}Source: https://github.com/ohmybahgosh/RockYou2024.txt${NC}"
+    echo -e "${BOLD}   • ~26GB uncompressed${NC}"
+    echo -e "   ${BLUE}Source: Magnet link via torrent${NC}"
     echo ""
     
     DOWNLOAD_DIR="$HOME/Downloads"
@@ -46,29 +46,24 @@ download_rockyou2024() {
         return 0
     fi
     
-    echo -e "${YELLOW}⚠️  This will download ~7GB and extract to ~26GB${NC}"
-    read -p "   Continue? (y/N) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${RED}Aborted${NC}"
-        return 1
-    fi
+    echo -e "${YELLOW}⚠️  RockYou2024 must be downloaded via torrent or direct link${NC}"
+    echo ""
+    echo -e "${CYAN}Option 1 - Torrent (fastest):${NC}"
+    echo -e "  Magnet: ${BOLD}magnet:?xt=urn:btih:2eba19c1e8c83aa3f6e47360e1a5c1f43b73a852&dn=rockyou2024.txt${NC}"
+    echo ""
+    echo -e "${CYAN}Option 2 - Direct download:${NC}"
+    echo -e "  wget https://weakpass.com/wordlist/2024 -O rockyou2024.txt.gz"
+    echo -e "  gunzip rockyou2024.txt.gz"
+    echo ""
+    echo -e "${CYAN}Option 3 - Kaggle:${NC}"
+    echo -e "  https://www.kaggle.com/datasets/wjburns/common-password-list-rockyou2024txt"
+    echo ""
+    echo -e "${YELLOW}After downloading, place the file in:${NC}"
+    echo -e "  ${BOLD}$DOWNLOAD_DIR/rockyou2024.txt${NC}"
+    echo ""
+    echo -e "${GREEN}Then run: ${BOLD}./import-all.sh${NC}"
     
-    # Download from GitHub release
-    echo -e "${CYAN}⬇️  Downloading...${NC}"
-    wget --progress=bar:force -O rockyou2024.txt.tar.gz \
-        "https://github.com/ohmybahgosh/RockYou2024.txt/releases/download/v1.0/rockyou2024.txt.tar.gz" \
-        || curl -# -L -o rockyou2024.txt.tar.gz \
-        "https://github.com/ohmybahgosh/RockYou2024.txt/releases/download/v1.0/rockyou2024.txt.tar.gz"
-    
-    echo -e "${CYAN}📦 Extracting...${NC}"
-    tar -xzf rockyou2024.txt.tar.gz
-    
-    echo -e "${CYAN}🧹 Cleaning up archive...${NC}"
-    rm rockyou2024.txt.tar.gz
-    
-    echo -e "${GREEN}${EMOJI_SUCCESS} Downloaded to $DOWNLOAD_DIR/rockyou2024.txt${NC}"
-    return 0
+    return 1
 }
 
 # Check if user wants to download rockyou2024
