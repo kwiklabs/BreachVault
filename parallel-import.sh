@@ -13,10 +13,11 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Configuration
-WORKERS=${WORKERS:-4}  # Number of parallel workers
-BATCH_SIZE=${BATCH_SIZE:-50000}  # Hashes per batch (larger = faster)
-CHUNK_LINES=${CHUNK_LINES:-100000}  # Lines per chunk for splitting
+# Configuration - Auto-detect CPU cores for optimal performance
+CPU_CORES=$(nproc 2>/dev/null || echo "4")
+WORKERS=${WORKERS:-$CPU_CORES}  # Number of parallel workers (default: all CPU cores)
+BATCH_SIZE=${BATCH_SIZE:-100000}  # Hashes per batch (larger = faster, 100K optimal for i7)
+CHUNK_LINES=${CHUNK_LINES:-200000}  # Lines per chunk for splitting
 
 echo -e "${PURPLE}════════════════════════════════════════════${NC}"
 echo -e "${PURPLE}    BreachVault Parallel Import Engine     ${NC}"
