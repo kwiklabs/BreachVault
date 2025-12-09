@@ -126,12 +126,18 @@ echo ""
 echo -e "${YELLOW}⚙️  Workers: ${WORKERS}${NC}"
 echo -e "${YELLOW}⚙️  Batch size: $(printf "%'d" $BATCH_SIZE) hashes/batch${NC}"
 echo ""
-echo -e "${YELLOW}⚠️  Ready to import into BreachVault database${NC}"
-read -p "Continue? (y/N) " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "Cancelled."
-    exit 0
+
+# Skip confirmation if AUTO_YES is set or running non-interactively
+if [ -z "$AUTO_YES" ] && [ -t 0 ]; then
+    echo -e "${YELLOW}⚠️  Ready to import into BreachVault database${NC}"
+    read -p "Continue? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Cancelled."
+        exit 0
+    fi
+else
+    echo -e "${GREEN}✓ Auto-starting import (non-interactive mode)${NC}"
 fi
 
 echo ""
@@ -160,8 +166,8 @@ import asyncpg
 import os
 from datetime import datetime
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://breachvault:breachpass@localhost:5433/breachvault")
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", "50000"))
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://breachvault:breachvault123@localhost:5433/breachvault")
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", "100000"))
 
 async def worker_import():
     """Process stdin lines in parallel batches"""
@@ -217,7 +223,7 @@ if __name__ == "__main__":
 WORKER_SCRIPT
     
     # Export environment variables for workers
-    export DATABASE_URL="postgresql://breachvault:breachpass@localhost:5433/breachvault"
+    export DATABASE_URL="postgresql://breachvault:breachvault123@localhost:5433/breachvault"
     export BATCH_SIZE="$BATCH_SIZE"
     
     # Use GNU parallel to split work across workers
@@ -230,11 +236,12 @@ WORKER_SCRIPT
     
     START_TIME=$(date +%s)
     
+    # Use GNU parallel with optimal settings
     cat "$file" | parallel \
         --pipe \
         --round-robin \
         -j "$WORKERS" \
-        --block -1 \
+        --block 10M \
         "python3 /tmp/worker_import.py '$FILENAME'"
     
     END_TIME=$(date +%s)
