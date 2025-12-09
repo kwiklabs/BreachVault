@@ -1,0 +1,87 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: breachvault-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-breachvault}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-breachvault123}
+      POSTGRES_DB: ${POSTGRES_DB:-breachvault}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-breachvault}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - breachvault-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: breachvault-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - breachvault-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: breachvault-backend
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://breachvault:breachvault123@postgres:5432/breachvault}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      JWT_SECRET: ${JWT_SECRET:-supersecretchangeme}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme2025}
+      BLOOM_FILTER_CAPACITY: ${BLOOM_FILTER_CAPACITY:-100000000}
+      BLOOM_FILTER_ERROR_RATE: ${BLOOM_FILTER_ERROR_RATE:-0.001}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-60}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    networks:
+      - breachvault-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: breachvault-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-generaterandomstring}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - breachvault-network
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  breachvault-network:
+    driver: bridge
