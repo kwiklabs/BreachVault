@@ -82,7 +82,7 @@ echo ""
 echo -e "${YELLOW}${EMOJI_SEARCH} Finding all wordlist files...${NC}"
 
 # Find all potential wordlist files (including rockyou2024)
-FOUND_FILES=($(find ~ -type f \( -name "rockyou*.txt" -o -name "RockYou*.txt" -o -name "breach*.txt" -o -name "Breach*.txt" \) ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/.cache/*" ! -path "*/.config/*" ! -path "*/Trash/*" ! -path "*/.Trash*/*" ! -path "*/trash/*" 2>/dev/null))
+FOUND_FILES=($(find ~ -type f \( -name "rockyou*.txt" -o -name "RockYou*.txt" -o -name "breach*.txt" -o -name "Breach*.txt" -o -name "crackstation*.txt" -o -name "weakpass*.txt" \) ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/.cache/*" ! -path "*/.config/*" ! -path "*/Trash/*" ! -path "*/.Trash*/*" ! -path "*/trash/*" 2>/dev/null))
 
 # Deduplicate by content hash
 declare -A seen_hashes
