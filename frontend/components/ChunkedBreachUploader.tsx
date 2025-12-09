@@ -135,6 +135,7 @@ export function ChunkedBreachUploader({ token, onComplete }: ChunkedBreachUpload
                 </div>
               </div>
               <button
+                aria-label='select file'
                 onClick={() => setSelectedFile(null)}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
