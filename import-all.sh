@@ -3,11 +3,59 @@
 
 set -e  # Exit on error
 
+# Function to download rockyou2024 (1.5B passwords)
+download_rockyou2024() {
+    echo "📥 Downloading RockYou2024.txt (1.5 billion passwords, ~7GB compressed)..."
+    echo "   Source: https://github.com/ohmybahgosh/RockYou2024.txt"
+    echo ""
+    
+    DOWNLOAD_DIR="$HOME/Downloads"
+    mkdir -p "$DOWNLOAD_DIR"
+    
+    cd "$DOWNLOAD_DIR"
+    
+    if [ -f "rockyou2024.txt" ]; then
+        echo "✓ rockyou2024.txt already exists"
+        return 0
+    fi
+    
+    echo "   This will download ~7GB and extract to ~26GB"
+    read -p "   Continue? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        return 1
+    fi
+    
+    # Download from GitHub release
+    echo "   Downloading..."
+    wget -O rockyou2024.txt.tar.gz \
+        "https://github.com/ohmybahgosh/RockYou2024.txt/releases/download/v1.0/rockyou2024.txt.tar.gz" \
+        || curl -L -o rockyou2024.txt.tar.gz \
+        "https://github.com/ohmybahgosh/RockYou2024.txt/releases/download/v1.0/rockyou2024.txt.tar.gz"
+    
+    echo "   Extracting..."
+    tar -xzf rockyou2024.txt.tar.gz
+    
+    echo "   Cleaning up archive..."
+    rm rockyou2024.txt.tar.gz
+    
+    echo "✅ Downloaded to $DOWNLOAD_DIR/rockyou2024.txt"
+    return 0
+}
+
+# Check if user wants to download rockyou2024
+if [ "$1" == "--download-2024" ] || [ "$1" == "-d" ]; then
+    download_rockyou2024
+    echo ""
+    echo "Now run ./import-all.sh to import it"
+    exit 0
+fi
+
 echo "🔍 Finding all wordlist files..."
 echo ""
 
-# Find all potential wordlist files
-FOUND_FILES=($(find ~ -type f \( -name "rockyou*.txt" -o -name "*breach*.txt" -o -name "*passwords*.txt" -o -name "*.wordlist" \) ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/.cache/*" ! -path "*/.config/*" 2>/dev/null))
+# Find all potential wordlist files (including rockyou2024)
+FOUND_FILES=($(find ~ -type f \( -name "rockyou*.txt" -o -name "*2024*.txt" -o -name "*breach*.txt" -o -name "*passwords*.txt" -o -name "*.wordlist" \) ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/.cache/*" ! -path "*/.config/*" 2>/dev/null))
 
 # Deduplicate by content hash
 declare -A seen_hashes
@@ -136,5 +184,6 @@ done
 echo ""
 echo "🎉 All imports complete!"
 echo ""
-echo "Check status:"
-echo "  sudo docker compose exec backend python -c 'import asyncio; from app.services.db import db_service; async def count(): await db_service.connect(); c = await db_service.pool.fetchval(\"SELECT COUNT(*) FROM breached_hashes\"); print(f\"Total: {c:,}\"); await db_service.disconnect(); asyncio.run(count())'"
+echo "💡 Tips:"
+echo "  • Download RockYou2024 (1.5B passwords): ./import-all.sh --download-2024"
+echo "  • Check database count: sudo docker compose exec backend python -c 'import asyncio; from app.services.db import db_service; async def count(): await db_service.connect(); c = await db_service.pool.fetchval(\"SELECT COUNT(*) FROM breached_hashes\"); print(f\"Total: {c:,}\"); await db_service.disconnect(); asyncio.run(count())'"
