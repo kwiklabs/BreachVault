@@ -162,14 +162,14 @@ for file in "${FILES[@]}"; do
     echo -e "${BOLD}${PURPLE}[$file_count/${#FILES[@]}] ${EMOJI_UPLOAD} Importing $filename${NC}"
     echo -e "   ${CYAN}Path: $file${NC}"
     
-    # Copy file into backend container
-    echo -e "   ${CYAN}⬆️  Uploading to container...${NC}"
-    sudo docker cp "$file" breachvault-backend:/tmp/wordlist.txt
-    
-    # Run import script inside container
-    echo -e "   ${GREEN}${EMOJI_ROCKET} Processing...${NC}"
+    # Mount file directly into container (zero copy!)
+    echo -e "   ${GREEN}${EMOJI_ROCKET} Processing (streaming from disk)...${NC}"
     echo ""
-    sudo docker compose exec -T backend python << EOF
+    sudo docker run --rm \
+        --network breachvault_default \
+        -v "$file:/tmp/wordlist.txt:ro" \
+        -e DATABASE_URL="postgresql://breachvault:breachpass@postgres:5432/breachvault" \
+        breachvault-backend python << EOF
 import asyncio
 import hashlib
 from app.services.db import db_service
@@ -236,9 +236,6 @@ async def import_file():
 
 asyncio.run(import_file())
 EOF
-    
-    # Clean up
-    sudo docker compose exec -T backend rm /tmp/wordlist.txt 2>/dev/null
     
     echo ""
     echo -e "${GREEN}${EMOJI_SUCCESS} Done with $filename${NC}"
