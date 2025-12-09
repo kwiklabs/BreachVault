@@ -190,6 +190,6 @@ export function PasswordChecker() {
           </p>
         </motion.div>
       </div>
-    </div>
+    </motion.div>
   )
 }
