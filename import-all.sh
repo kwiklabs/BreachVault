@@ -3,10 +3,37 @@
 
 set -e  # Exit on error
 
+# Colors for better visual feedback
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+NC='\033[0m' # No Color
+
+# Emoji alternatives for systems without emoji support
+EMOJI_SEARCH="🔍"
+EMOJI_CHECK="✓"
+EMOJI_SKIP="⏭️"
+EMOJI_DOWNLOAD="📥"
+EMOJI_UPLOAD="📤"
+EMOJI_SUCCESS="✅"
+EMOJI_ERROR="❌"
+EMOJI_INFO="💡"
+EMOJI_ROCKET="🚀"
+EMOJI_DATABASE="📊"
+EMOJI_BOOK="📖"
+EMOJI_LINK="🔗"
+EMOJI_PARTY="🎉"
+
 # Function to download rockyou2024 (1.5B passwords)
 download_rockyou2024() {
-    echo "📥 Downloading RockYou2024.txt (1.5 billion passwords, ~7GB compressed)..."
-    echo "   Source: https://github.com/ohmybahgosh/RockYou2024.txt"
+    echo -e "${CYAN}${EMOJI_DOWNLOAD} Downloading RockYou2024.txt${NC}"
+    echo -e "${BOLD}   • 1.5 billion passwords${NC}"
+    echo -e "${BOLD}   • ~7GB compressed → ~26GB uncompressed${NC}"
+    echo -e "   ${BLUE}Source: https://github.com/ohmybahgosh/RockYou2024.txt${NC}"
     echo ""
     
     DOWNLOAD_DIR="$HOME/Downloads"
@@ -15,31 +42,32 @@ download_rockyou2024() {
     cd "$DOWNLOAD_DIR"
     
     if [ -f "rockyou2024.txt" ]; then
-        echo "✓ rockyou2024.txt already exists"
+        echo -e "${GREEN}${EMOJI_CHECK} rockyou2024.txt already exists${NC}"
         return 0
     fi
     
-    echo "   This will download ~7GB and extract to ~26GB"
+    echo -e "${YELLOW}⚠️  This will download ~7GB and extract to ~26GB${NC}"
     read -p "   Continue? (y/N) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo -e "${RED}Aborted${NC}"
         return 1
     fi
     
     # Download from GitHub release
-    echo "   Downloading..."
-    wget -O rockyou2024.txt.tar.gz \
+    echo -e "${CYAN}⬇️  Downloading...${NC}"
+    wget --progress=bar:force -O rockyou2024.txt.tar.gz \
         "https://github.com/ohmybahgosh/RockYou2024.txt/releases/download/v1.0/rockyou2024.txt.tar.gz" \
-        || curl -L -o rockyou2024.txt.tar.gz \
+        || curl -# -L -o rockyou2024.txt.tar.gz \
         "https://github.com/ohmybahgosh/RockYou2024.txt/releases/download/v1.0/rockyou2024.txt.tar.gz"
     
-    echo "   Extracting..."
+    echo -e "${CYAN}📦 Extracting...${NC}"
     tar -xzf rockyou2024.txt.tar.gz
     
-    echo "   Cleaning up archive..."
+    echo -e "${CYAN}🧹 Cleaning up archive...${NC}"
     rm rockyou2024.txt.tar.gz
     
-    echo "✅ Downloaded to $DOWNLOAD_DIR/rockyou2024.txt"
+    echo -e "${GREEN}${EMOJI_SUCCESS} Downloaded to $DOWNLOAD_DIR/rockyou2024.txt${NC}"
     return 0
 }
 
@@ -47,12 +75,16 @@ download_rockyou2024() {
 if [ "$1" == "--download-2024" ] || [ "$1" == "-d" ]; then
     download_rockyou2024
     echo ""
-    echo "Now run ./import-all.sh to import it"
+    echo -e "${PURPLE}${EMOJI_ROCKET} Now run ${BOLD}./import-all.sh${NC}${PURPLE} to import it${NC}"
     exit 0
 fi
 
-echo "🔍 Finding all wordlist files..."
 echo ""
+echo -e "${BOLD}${CYAN}╔════════════════════════════════════════════╗${NC}"
+echo -e "${BOLD}${CYAN}║     ${EMOJI_ROCKET} BreachVault Wordlist Importer     ║${NC}"
+echo -e "${BOLD}${CYAN}╚════════════════════════════════════════════╝${NC}"
+echo ""
+echo -e "${YELLOW}${EMOJI_SEARCH} Finding all wordlist files...${NC}"
 
 # Find all potential wordlist files (including rockyou2024)
 FOUND_FILES=($(find ~ -type f \( -name "rockyou*.txt" -o -name "RockYou*.txt" -o -name "breach*.txt" -o -name "Breach*.txt" \) ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/.cache/*" ! -path "*/.config/*" ! -path "*/Trash/*" ! -path "*/.Trash*/*" ! -path "*/trash/*" 2>/dev/null))
@@ -61,7 +93,8 @@ FOUND_FILES=($(find ~ -type f \( -name "rockyou*.txt" -o -name "RockYou*.txt" -o
 declare -A seen_hashes
 declare -a FILES
 
-echo "🔎 Checking for duplicates (this may take a moment)..."
+echo -e "${CYAN}🔎 Checking for duplicates...${NC}"
+duplicates_found=0
 for file in "${FOUND_FILES[@]}"; do
     if [ -f "$file" ]; then
         # Get first 1MB hash to quickly identify duplicates
@@ -71,64 +104,93 @@ for file in "${FOUND_FILES[@]}"; do
             seen_hashes[$file_hash]="$file"
             FILES+=("$file")
         else
-            echo "  ⏭️  Duplicate of ${seen_hashes[$file_hash]}: $file"
+            echo -e "  ${YELLOW}${EMOJI_SKIP} ${NC}${file}"
+            echo -e "     ${CYAN}↳ Duplicate of ${seen_hashes[$file_hash]}${NC}"
+            duplicates_found=$((duplicates_found + 1))
         fi
     fi
 done
+
+if [ $duplicates_found -gt 0 ]; then
+    echo -e "${GREEN}${EMOJI_CHECK} Filtered out $duplicates_found duplicate(s)${NC}"
+fi
 echo ""
 
 if [ ${#FILES[@]} -eq 0 ]; then
-    echo "❌ No wordlist files found!"
+    echo -e "${RED}${EMOJI_ERROR} No wordlist files found!${NC}"
     echo ""
-    echo "Add files manually to import:"
-    echo "  FILES=(\"/path/to/wordlist1.txt\" \"/path/to/wordlist2.txt\")"
+    echo -e "${YELLOW}${EMOJI_INFO} Tip: Download RockYou2024 with:${NC}"
+    echo -e "   ${BOLD}./import-all.sh --download-2024${NC}"
     exit 1
 fi
 
-echo "📋 Unique files to import:"
+echo -e "${BOLD}${GREEN}📋 Unique files to import:${NC}"
+total_lines=0
 for file in "${FILES[@]}"; do
     size=$(du -h "$file" | cut -f1)
-    lines=$(wc -l < "$file" 2>/dev/null || echo "?")
-    echo "  ✓ $file ($size, $lines lines)"
+    lines=$(wc -l < "$file" 2>/dev/null || echo "0")
+    total_lines=$((total_lines + lines))
+    echo -e "  ${GREEN}${EMOJI_CHECK}${NC} ${BOLD}$(basename "$file")${NC}"
+    echo -e "     ${CYAN}├─ Size: $size${NC}"
+    echo -e "     ${CYAN}├─ Lines: $(printf "%'d" $lines)${NC}"
+    echo -e "     ${CYAN}└─ Path: $file${NC}"
 done
 echo ""
+echo -e "${BOLD}${PURPLE}Total: $(printf "%'d" $total_lines) passwords across ${#FILES[@]} file(s)${NC}"
+echo ""
 
-read -p "Continue with import? (y/N) " -n 1 -r
+echo -e "${YELLOW}⚠️  Ready to import into BreachVault database${NC}"
+read -p "Continue? (y/N) " -n 1 -r
 echo
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "Aborted."
+    echo -e "${RED}Aborted${NC}"
     exit 1
 fi
 
+echo ""
+echo -e "${BOLD}${CYAN}════════════════════════════════════════════${NC}"
+echo -e "${BOLD}${CYAN}          Starting Import Process          ${NC}"
+echo -e "${BOLD}${CYAN}════════════════════════════════════════════${NC}"
+echo ""
+
 # Import each file
+file_count=0
 for file in "${FILES[@]}"; do
+    file_count=$((file_count + 1))
+    
     if [ ! -f "$file" ]; then
-        echo "⏭️  Skipping $file (not found)"
+        echo -e "${RED}${EMOJI_SKIP} Skipping $file (not found)${NC}"
         continue
     fi
     
     filename=$(basename "$file")
-    echo ""
-    echo "📤 Importing $filename..."
-    echo "   File: $file"
+    echo -e "${BOLD}${PURPLE}[$file_count/${#FILES[@]}] ${EMOJI_UPLOAD} Importing $filename${NC}"
+    echo -e "   ${CYAN}Path: $file${NC}"
     
     # Copy file into backend container
+    echo -e "   ${CYAN}⬆️  Uploading to container...${NC}"
     sudo docker cp "$file" breachvault-backend:/tmp/wordlist.txt
     
     # Run import script inside container
+    echo -e "   ${GREEN}${EMOJI_ROCKET} Processing...${NC}"
+    echo ""
     sudo docker compose exec -T backend python << EOF
 import asyncio
 import hashlib
 from app.services.db import db_service
 
 async def import_file():
-    print("🔗 Connecting to database...")
+    import time
+    start_time = time.time()
+    
+    print("\033[0;36m🔗 Connecting to database...\033[0m")
     await db_service.connect()
     
-    print("📖 Reading file...")
+    print("\033[0;36m📖 Reading and hashing passwords...\033[0m")
     batch = []
     total = 0
     duplicates = 0
+    last_update = time.time()
     
     with open("/tmp/wordlist.txt", "r", encoding="utf-8", errors="ignore") as f:
         for line in f:
@@ -152,8 +214,11 @@ async def import_file():
                     )
                 batch = []
                 
+                # Update progress with speed calculation
                 if total % 100000 == 0:
-                    print(f"   Processed: {total:,} passwords...")
+                    elapsed = time.time() - start_time
+                    rate = total / elapsed if elapsed > 0 else 0
+                    print(f"\033[1;33m   ⚡ {total:,} passwords | {rate:,.0f}/sec | {elapsed:.1f}s elapsed\033[0m")
         
         # Insert remaining
         if batch:
@@ -163,12 +228,14 @@ async def import_file():
                     batch
                 )
     
-    print(f"✅ Imported {total:,} passwords from $filename")
+    elapsed = time.time() - start_time
+    rate = total / elapsed if elapsed > 0 else 0
+    print(f"\033[1;32m✅ Imported {total:,} passwords in {elapsed:.1f}s ({rate:,.0f}/sec)\033[0m")
     
     # Show total count
     async with db_service.pool.acquire() as conn:
         count = await conn.fetchval("SELECT COUNT(*) FROM breached_hashes")
-        print(f"📊 Total passwords in database: {count:,}")
+        print(f"\033[1;35m📊 Total in database: {count:,} passwords\033[0m")
     
     await db_service.disconnect()
 
@@ -176,14 +243,26 @@ asyncio.run(import_file())
 EOF
     
     # Clean up
-    sudo docker compose exec -T backend rm /tmp/wordlist.txt
+    sudo docker compose exec -T backend rm /tmp/wordlist.txt 2>/dev/null
     
-    echo "✅ Done with $filename"
+    echo ""
+    echo -e "${GREEN}${EMOJI_SUCCESS} Done with $filename${NC}"
+    echo -e "${CYAN}────────────────────────────────────────────${NC}"
+    echo ""
 done
 
 echo ""
-echo "🎉 All imports complete!"
+echo -e "${BOLD}${GREEN}╔════════════════════════════════════════════╗${NC}"
+echo -e "${BOLD}${GREEN}║   ${EMOJI_PARTY} All Imports Complete! ${EMOJI_PARTY}           ║${NC}"
+echo -e "${BOLD}${GREEN}╚════════════════════════════════════════════╝${NC}"
 echo ""
-echo "💡 Tips:"
-echo "  • Download RockYou2024 (1.5B passwords): ./import-all.sh --download-2024"
-echo "  • Check database count: sudo docker compose exec backend python -c 'import asyncio; from app.services.db import db_service; async def count(): await db_service.connect(); c = await db_service.pool.fetchval(\"SELECT COUNT(*) FROM breached_hashes\"); print(f\"Total: {c:,}\"); await db_service.disconnect(); asyncio.run(count())'"
+echo -e "${PURPLE}${EMOJI_INFO} Next steps:${NC}"
+echo -e "  ${CYAN}•${NC} Download RockYou2024 (1.5B passwords):"
+echo -e "    ${BOLD}./import-all.sh --download-2024${NC}"
+echo ""
+echo -e "  ${CYAN}•${NC} Test password checker:"
+echo -e "    ${BOLD}http://localhost:3000${NC}"
+echo ""
+echo -e "  ${CYAN}•${NC} Check database stats:"
+echo -e "    ${BOLD}sudo docker compose exec backend python -c 'import asyncio; from app.services.db import db_service; async def count(): await db_service.connect(); c = await db_service.pool.fetchval(\"SELECT COUNT(*) FROM breached_hashes\"); print(f\"${EMOJI_DATABASE} Total: {c:,}\"); await db_service.disconnect(); asyncio.run(count())'${NC}"
+echo ""
