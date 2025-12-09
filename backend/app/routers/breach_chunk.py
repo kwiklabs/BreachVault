@@ -12,7 +12,7 @@ import hashlib
 import re
 from typing import Dict, Set, List
 import time
-from app.services.db import get_db_pool
+from app.services.db import db_service
 
 router = APIRouter(prefix="/api/breach/chunk", tags=["breach-chunk-upload"])
 
@@ -215,7 +215,7 @@ async def flush_batch_buffer(upload_id: str, source: str):
     if not session or not session["batch_buffer"]:
         return
 
-    pool = await get_db_pool()
+    pool = db_service.pool
     batch = session["batch_buffer"]
     batch_size = len(batch)
 
