@@ -14,8 +14,8 @@ from typing import Optional
 
 # Configuration
 DB_URL = "postgresql://breachvault:breachvault123@localhost:5433/breachvault"
-BATCH_SIZE = 200_000  # Doubled for more throughput
-WORKERS = cpu_count()  # Use all cores
+BATCH_SIZE = 150_000  # Reduced to avoid deadlocks
+WORKERS = 10  # Reduced workers to minimize lock contention
 QUEUE_SIZE = 10  # Increased buffer
 
 class Stats:
@@ -42,16 +42,24 @@ class Stats:
             self.last_report = now
             self.last_count = self.total
 
-async def batch_insert(conn, batch, source):
-    """Optimized batch insert with ON CONFLICT"""
-    await conn.executemany(
-        """
-        INSERT INTO breached_hashes (hash, source) 
-        VALUES ($1, $2) 
-        ON CONFLICT (hash) DO NOTHING
-        """,
-        batch
-    )
+async def batch_insert(conn, batch, source, max_retries=3):
+    """Optimized batch insert with deadlock retry"""
+    for attempt in range(max_retries):
+        try:
+            await conn.executemany(
+                """
+                INSERT INTO breached_hashes (hash, source) 
+                VALUES ($1, $2) 
+                ON CONFLICT (hash) DO NOTHING
+                """,
+                batch
+            )
+            return
+        except asyncpg.exceptions.DeadlockDetectedError:
+            if attempt < max_retries - 1:
+                await asyncio.sleep(0.1 * (attempt + 1))  # Exponential backoff
+                continue
+            raise
 
 async def worker_process(worker_id: int, queue: Queue, source: str, stats_queue: Queue):
     """Worker: consume chunks from queue, hash, batch insert"""
