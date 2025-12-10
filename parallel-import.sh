@@ -236,13 +236,23 @@ WORKER_SCRIPT
     
     START_TIME=$(date +%s)
     
-    # Use GNU parallel with optimal settings
-    cat "$file" | parallel \
-        --pipe \
-        --round-robin \
-        -j "$WORKERS" \
-        --block 10M \
-        "python3 /tmp/worker_import.py '$FILENAME'"
+    # Calculate lines per worker
+    TOTAL_LINES=$(wc -l < "$file")
+    LINES_PER_WORKER=$((TOTAL_LINES / WORKERS + 1))
+    
+    # Split file and process chunks in parallel
+    split -l "$LINES_PER_WORKER" "$file" "/tmp/chunk_${FILENAME}_"
+    
+    # Start workers for each chunk in background
+    for chunk in /tmp/chunk_${FILENAME}_*; do
+        cat "$chunk" | python3 /tmp/worker_import.py "$FILENAME" 2>&1 | sed "s/^/   /" &
+    done
+    
+    # Wait for all workers to complete
+    wait
+    
+    # Cleanup chunks
+    rm -f /tmp/chunk_${FILENAME}_*
     
     END_TIME=$(date +%s)
     ELAPSED=$((END_TIME - START_TIME))
